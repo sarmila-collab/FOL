@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOL Reasoning Simulator — Autonomous Aircraft Decision System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#F3F7FA;
+    --panel:#FFFFFF;
+    --navy:#122A42;
+    --navy-soft:#3F5670;
+    --line:#DCE4EC;
+    --line-strong:#B9C6D3;
+    --teal:#0F6E56;
+    --teal-bg:#E1F5EE;
+    --amber:#8A5A0B;
+    --amber-bg:#FBEED9;
+    --coral:#9E3A22;
+    --coral-bg:#FBEAE4;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--sky);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:36px 36px;
+    background-attachment:fixed;
+    color:var(--navy);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:0 0 4rem;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:0 1.5rem;}
+
+  header{
+    padding:2.25rem 0 1.5rem;
+    border-bottom:1px solid var(--line-strong);
+    margin-bottom:2rem;
+  }
+  .callsign{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--navy-soft);
+    text-transform:uppercase;
+    margin:0 0 10px;
+  }
+  h1{
+    font-size:28px;
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .subhead{
+    color:var(--navy-soft);
+    font-size:15px;
+    margin:0;
+  }
+
+  .tabs{
+    display:flex;
+    gap:2px;
+    background:var(--line);
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    padding:3px;
+    margin-bottom:2.25rem;
+  }
+  .tab{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:12px 10px;
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--navy-soft);
+    border-radius:7px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .tab.active{background:var(--panel); color:var(--navy); font-weight:600; box-shadow:0 1px 2px rgba(18,42,66,0.08);}
+  .tab:not(.active):hover{color:var(--navy);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .kb{
+    background:var(--navy);
+    color:#DCE9F2;
+    font-family:var(--mono);
+    font-size:13.5px;
+    line-height:2;
+    border-radius:12px;
+    padding:1.25rem 1.5rem;
+    margin-bottom:1.75rem;
+    position:relative;
+    overflow:hidden;
+  }
+  .kb::before{
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:repeating-linear-gradient(90deg, var(--teal) 0 10px, transparent 10px 16px);
+  }
+  .kb .rule{color:#8FB4CC;}
+  .kb .tag{
+    display:inline-block;
+    font-size:10px;
+    letter-spacing:0.1em;
+    color:#6D8CA3;
+    text-transform:uppercase;
+    margin:10px 0 4px;
+  }
+
+  .qcard{
+    background:var(--panel);
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    padding:1.5rem;
+    margin-bottom:1.75rem;
+  }
+  .qcard .qlabel{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--navy-soft);
+    text-transform:uppercase;
+    margin:0 0 8px;
+  }
+  .qcard .qtext{
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 16px;
+  }
+  .opt{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    width:100%;
+    text-align:left;
+    background:var(--sky);
+    border:1px solid var(--line-strong);
+    border-radius:9px;
+    padding:12px 16px;
+    margin-bottom:9px;
+    font-family:var(--mono);
+    font-size:13.5px;
+    color:var(--navy);
+    cursor:pointer;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .opt:hover:not(:disabled){border-color:var(--navy-soft);}
+  .opt:disabled{cursor:default;}
+  .opt .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--line-strong);
+    flex-shrink:0;
+  }
+  .opt.correct{background:var(--teal-bg); border-color:var(--teal); color:var(--teal);}
+  .opt.correct .dot{background:var(--teal);}
+  .opt.incorrect{background:var(--coral-bg); border-color:var(--coral); color:var(--coral);}
+  .opt.incorrect .dot{background:var(--coral);}
+
+  .explain{
+    display:none;
+    font-size:13.5px;
+    line-height:1.65;
+    color:var(--navy-soft);
+    background:var(--sky);
+    border-left:3px solid var(--navy-soft);
+    border-radius:0 8px 8px 0;
+    padding:12px 16px;
+    margin-top:12px;
+  }
+
+  .infer-chain{
+    font-family:var(--mono);
+    font-size:13.5px;
+    line-height:2.2;
+    background:var(--sky);
+    border:1px dashed var(--line-strong);
+    border-radius:10px;
+    padding:1rem 1.25rem;
+    margin:1rem 0 1.5rem;
+  }
+  .infer-chain .arrow{color:var(--navy-soft); margin:0 8px;}
+  .infer-chain .derived{color:var(--teal); font-weight:600;}
+
+  .btn{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:14px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:11px 20px;
+    cursor:pointer;
+    transition:opacity .12s ease;
+  }
+  .btn:hover{opacity:0.88;}
+  .btn.ghost{background:transparent; color:var(--navy); border:1px solid var(--line-strong);}
+
+  .status-strip{
+    display:flex;
+    gap:8px;
+    margin-bottom:1.75rem;
+  }
+  .status-strip .light{
+    width:11px; height:11px; border-radius:50%;
+    background:var(--line-strong);
+    border:1px solid var(--line-strong);
+  }
+  .status-strip .light.done{background:var(--teal); border-color:var(--teal);}
+  .status-strip .light.wrong{background:var(--coral); border-color:var(--coral);}
+
+  .banner{
+    background:var(--amber-bg);
+    color:var(--amber);
+    border:1px solid #E4C592;
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:13.5px;
+    margin-bottom:1.75rem;
+  }
+  .banner b{font-weight:600;}
+
+  .fault{
+    background:var(--coral-bg);
+    color:var(--coral);
+    font-family:var(--mono);
+    font-size:13.5px;
+    border:1px solid #E8B7A6;
+    border-radius:10px;
+    padding:1rem 1.25rem;
+    margin-bottom:1.5rem;
+  }
+
+  footer{
+    margin-top:2.5rem;
+    padding-top:1.5rem;
+    border-top:1px solid var(--line);
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--navy-soft);
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+  }
+
+  @media (max-width:600px){
+    h1{font-size:22px;}
+    .tab{font-size:10px; padding:10px 6px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="callsign">Autonomous aircraft decision system &middot; training simulator</p>
+    <h1>First-order logic: aircraft reasoning mission</h1>
+    <p class="subhead">Work through what is known, what can be inferred, and what the system should decide &mdash; one panel at a time.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="p1">01 &middot; Knowledge base</button>
+    <button class="tab" data-panel="p2">02 &middot; Mission A7</button>
+    <button class="tab" data-panel="p3">03 &middot; Fault check</button>
+  </div>
+
+  <!-- PANEL 1 -->
+  <div class="panel active" id="p1">
+    <div class="kb">
+      <div class="tag">Known facts</div>
+      Aircraft(A1)<br>Aircraft(A2)<br>LowFuel(A1)<br>HighTemperature(A2)
+      <div class="tag">Rules</div>
+      <span class="rule">&forall;x [Aircraft(x) &and; LowFuel(x) &rarr; Warning(x)]</span><br>
+      <span class="rule">&forall;x [Aircraft(x) &and; HighTemperature(x) &rarr; InspectEngine(x)]</span>
+    </div>
+    <div class="status-strip" id="strip-p1"></div>
+    <div id="kb-questions"></div>
+  </div>
+
+  <!-- PANEL 2 -->
+  <div class="panel" id="p2">
+    <div class="kb">
+      <div class="tag">Known facts</div>
+      Aircraft(A7)<br>LowFuel(A7)<br>HighWind(A7)<br>StableAltitude(A7)
+      <div class="tag">Rules</div>
+      <span class="rule">&forall;x [Aircraft(x) &and; LowFuel(x) &rarr; FuelWarning(x)]</span><br>
+      <span class="rule">&forall;x [Aircraft(x) &and; HighWind(x) &rarr; MonitorWind(x)]</span><br>
+      <span class="rule">&forall;x [FuelWarning(x) &and; HighWind(x) &rarr; ReturnToBase(x)]</span>
+    </div>
+
+    <div class="qcard">
+      <p class="qlabel">Level 1</p>
+      <p class="qtext">What facts are true right now for A7?</p>
+      <p style="font-size:13.5px; color:var(--navy-soft); margin:0 0 16px;">Four facts are stated directly in the knowledge base above. No inference needed yet &mdash; just reading.</p>
+      <button class="btn" id="unlock-l2">Proceed to level 2 &rarr;</button>
+    </div>
+
+    <div class="qcard" id="level2-card" style="display:none;">
+      <p class="qlabel">Level 2</p>
+      <p class="qtext">What new facts can be inferred?</p>
+      <p style="font-size:13.5px; color:var(--navy-soft); margin:0 0 16px;">Apply the first two rules to A7's facts, then reveal.</p>
+      <button class="btn ghost" id="reveal-inference">Reveal inferred facts</button>
+      <div class="infer-chain" id="inference-result" style="display:none;"></div>
+    </div>
+
+    <div class="qcard" id="level3-card" style="display:none;">
+      <p class="qlabel">Level 3</p>
+      <p class="qtext">What should aircraft A7 do?</p>
+      <p style="font-size:13.5px; color:var(--navy-soft); margin:0 0 16px;">FuelWarning(A7) and MonitorWind(A7) are now established. One more rule applies.</p>
+      <div id="mission-choices"></div>
+      <div class="explain" id="mission-explain"></div>
+    </div>
+  </div>
+
+  <!-- PANEL 3 -->
+  <div class="panel" id="p3">
+    <div class="banner"><b>Fault check &mdash;</b> a rule was rewritten by a junior engineer. Find what breaks.</div>
+
+    <div class="fault">
+      &forall;x [LowFuel(x) &rarr; Warning(x)]
+    </div>
+
+    <div class="qcard">
+      <p class="qlabel">Diagnose</p>
+      <p class="qtext">Compared to the original rule &mdash; &forall;x [Aircraft(x) &and; LowFuel(x) &rarr; Warning(x)] &mdash; what is wrong with this version?</p>
+      <div id="fault-choices"></div>
+      <div class="explain" id="fault-explain"></div>
+    </div>
+
+    <div class="qcard" id="fault-followup" style="display:none;">
+      <p class="qlabel">Consequence</p>
+      <p class="qtext">Suppose FuelStation(S1) and LowFuel(S1) are both true &mdash; S1 is a refueling depot, not an aircraft. What does the faulty rule incorrectly conclude?</p>
+      <div id="fault2-choices"></div>
+      <div class="explain" id="fault2-explain"></div>
+    </div>
+  </div>
+
+  <footer>Reasoning simulator &middot; propositional &amp; first-order logic &middot; for classroom use</footer>
+</div>
+
+<script>
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+
+// ---------- helper to build a multiple choice question ----------
+function buildMC(container, options, correctIdx, explainText, onAnswered){
+  const wrap = document.createElement('div');
+  options.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = '<span class="dot"></span><span>' + opt + '</span>';
+    b.addEventListener('click', () => {
+      const all = wrap.querySelectorAll('.opt');
+      all.forEach(x => x.disabled = true);
+      if(i === correctIdx){
+        b.classList.add('correct');
+      } else {
+        b.classList.add('incorrect');
+        all[correctIdx].classList.add('correct');
+      }
+      if(explainText){
+        const exp = wrap.parentElement.querySelector('.explain') || wrap.nextElementSibling;
+        if(exp){ exp.textContent = explainText; exp.style.display = 'block'; }
+      }
+      if(onAnswered) onAnswered(i === correctIdx);
+    });
+    wrap.appendChild(b);
+  });
+  container.appendChild(wrap);
+}
+
+// ---------- Panel 1: knowledge base questions ----------
+const kbQuestions = [
+  {
+    q: "What can be concluded about A1?",
+    options: ["Warning(A1)", "InspectEngine(A1)", "Nothing can be concluded"],
+    correct: 0,
+    explain: "A1 satisfies Aircraft(A1) and LowFuel(A1), matching the first rule's antecedent. Instantiating x = A1 and applying modus ponens gives Warning(A1)."
+  },
+  {
+    q: "What can be concluded about A2?",
+    options: ["Warning(A2)", "InspectEngine(A2)", "Nothing can be concluded"],
+    correct: 1,
+    explain: "A2 satisfies Aircraft(A2) and HighTemperature(A2), matching the second rule's antecedent. Instantiating x = A2 and applying modus ponens gives InspectEngine(A2)."
+  },
+  {
+    q: "Can anything be concluded about A1's engine temperature?",
+    options: ["Yes, InspectEngine(A1)", "Yes, HighTemperature(A1) is false", "No, it is simply unknown"],
+    correct: 2,
+    explain: "The knowledge base never states HighTemperature(A1) as true or false, and no rule lets us derive it. Under the open-world assumption, unmentioned facts are unknown, not false. Known facts, derived facts, and unknown facts are three different categories."
+  }
+];
+
+const kbDiv = document.getElementById('kb-questions');
+const stripP1 = document.getElementById('strip-p1');
+kbQuestions.forEach((_, i) => {
+  const light = document.createElement('div');
+  light.className = 'light';
+  light.id = 'strip1-' + i;
+  stripP1.appendChild(light);
+});
+
+kbQuestions.forEach((item, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = '<p class="qlabel">Question ' + (i+1) + '</p><p class="qtext">' + item.q + '</p>';
+  const mcHolder = document.createElement('div');
+  card.appendChild(mcHolder);
+  const exp = document.createElement('div');
+  exp.className = 'explain';
+  card.appendChild(exp);
+  kbDiv.appendChild(card);
+  buildMC(mcHolder, item.options, item.correct, item.explain, (isCorrect) => {
+    const light = document.getElementById('strip1-' + i);
+    light.classList.add(isCorrect ? 'done' : 'wrong');
+  });
+});
+
+// ---------- Panel 2: mission ----------
+document.getElementById('unlock-l2').addEventListener('click', () => {
+  document.getElementById('level2-card').style.display = 'block';
+  document.getElementById('unlock-l2').disabled = true;
+  document.getElementById('unlock-l2').style.opacity = '0.5';
+});
+
+document.getElementById('reveal-inference').addEventListener('click', () => {
+  const box = document.getElementById('inference-result');
+  box.style.display = 'block';
+  box.innerHTML =
+    'LowFuel(A7) <span class="arrow">&rarr;</span> <span class="derived">FuelWarning(A7)</span><br>' +
+    'HighWind(A7) <span class="arrow">&rarr;</span> <span class="derived">MonitorWind(A7)</span>';
+  document.getElementById('reveal-inference').disabled = true;
+  document.getElementById('reveal-inference').style.opacity = '0.5';
+  setTimeout(() => {
+    document.getElementById('level3-card').style.display = 'block';
+    const choices = ["ReturnToBase(A7)", "InspectEngine(A7)", "Warning(A7)", "No action required"];
+    buildMC(
+      document.getElementById('mission-choices'),
+      choices,
+      0,
+      "FuelWarning(A7) and HighWind(A7) both hold, matching the third rule's antecedent exactly. Modus ponens gives ReturnToBase(A7). Note: StableAltitude(A7) was true but never used \u2014 it doesn't appear in any rule, so it can't trigger an inference. Not every true fact is a relevant fact.",
+      null
+    );
+  }, 350);
+});
+
+// ---------- Panel 3: fault check ----------
+buildMC(
+  document.getElementById('fault-choices'),
+  [
+    "It's missing the Aircraft(x) guard, so it applies to any object with LowFuel, not just aircraft",
+    "It's missing a negation, so it should trigger when fuel is NOT low",
+    "Nothing is wrong \u2014 it's logically equivalent to the original"
+  ],
+  0,
+  "The original rule requires two conditions to jointly hold: Aircraft(x) AND LowFuel(x). Dropping the Aircraft(x) conjunct widens the domain of things the rule fires on \u2014 now any object at all with LowFuel(x) true satisfies the antecedent, aircraft or not. A weaker antecedent makes a rule fire more often, not less.",
+  (isCorrect) => {
+    if(isCorrect){
+      document.getElementById('fault-followup').style.display = 'block';
+    }
+  }
+);
+
+buildMC(
+  document.getElementById('fault2-choices'),
+  [
+    "Warning(S1) \u2014 incorrectly, since S1 is a depot, not an aircraft",
+    "Nothing \u2014 the rule correctly ignores S1",
+    "InspectEngine(S1)"
+  ],
+  0,
+  "Because the faulty rule only checks LowFuel(x), it fires on S1 even though S1 isn't an aircraft. This is exactly the kind of over-firing bug the Aircraft(x) guard exists to prevent \u2014 in a real system, this could raise a false warning on ground equipment instead of restricting the rule to aircraft in flight.",
+  null
+);
+</script>
+</body>
+</html>
